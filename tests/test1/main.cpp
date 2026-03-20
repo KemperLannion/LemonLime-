@@ -327,6 +327,29 @@ class TestContest : public QObject {
 		delete contest;
 		delete contest2;
 	}
+
+	// ------------------------------------------------------------------
+	// Test 6: bundled compiler path can be resolved from tools/compilers.
+	// ------------------------------------------------------------------
+	void testBundledCompilerResolution() {
+		const QString compilerDir = Settings::compilerPath();
+		QDir().mkpath(compilerDir);
+		const QString fakeName = "lemon-test-compiler";
+		const QString fakePath = compilerDir + fakeName;
+		{
+			QFile f(fakePath);
+			QVERIFY2(f.open(QIODevice::WriteOnly), "Cannot create fake bundled compiler");
+			f.write("stub");
+			f.close();
+		}
+
+		Compiler compiler;
+		compiler.setCompilerLocation(fakeName);
+		QCOMPARE(QDir::toNativeSeparators(compiler.getResolvedCompilerLocation()),
+		         QDir::toNativeSeparators(fakePath));
+
+		QFile::remove(fakePath);
+	}
 };
 
 QTEST_MAIN(TestContest)

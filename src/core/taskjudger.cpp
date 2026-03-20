@@ -182,7 +182,7 @@ auto TaskJudger::traditionalTaskPrepare() -> bool {
 #endif
 			interpreterFlag = false;
 		} else {
-			executableFile = i->getInterpreterLocation();
+			executableFile = i->getResolvedInterpreterLocation();
 			arguments = interpreterArguments[configurationIndex];
 			arguments.replace("%s.*", sourceFile + extraFiles);
 			arguments.replace("%s", task->getSourceFileName());
@@ -248,7 +248,7 @@ auto TaskJudger::traditionalTaskPrepare() -> bool {
 				                                    QDir::separator() + contestantName);
 				// TODO: 需要重构代码来处理含空格路径问题
 
-				compilerProcess.start(i->getCompilerLocation(),
+				compilerProcess.start(i->getResolvedCompilerLocation(),
 				                      k.split(QLatin1Char(' '), Qt::SkipEmptyParts));
 
 				if (! compilerProcess.waitForStarted(-1)) {
@@ -408,7 +408,9 @@ int TaskJudger::judge() {
 		if (isSkipped)
 			continue;
 
-		for (int j = 0; j < task->getTestCase(i)->getInputFiles().size(); j++) {
+		QList<JudgingThread *> threads;
+		int inputCount = task->getTestCase(i)->getInputFiles().size();
+		for (int j = 0; j < inputCount; j++) {
 			inputFiles[i][j] = QFileInfo(curTestCase->getInputFiles().at(j)).fileName();
 
 			testCaseScore[i] =
@@ -489,11 +491,19 @@ int TaskJudger::judge() {
 				thread->setInterpreterAsWatcher(interpreterAsWatcher);
 			}
 			thread->start();
-			thread->wait();
+			threads.append(thread);
+		}
 
+		for (int j = 0; j < threads.size(); j++) {
+			auto *thread = threads[j];
+			thread->wait();
 			QCoreApplication::processEvents();
 			if (! isJudging) {
-				delete thread;
+				emit stopJudgingSignal();
+				for (auto *leftThread : threads) {
+					leftThread->wait();
+					delete leftThread;
+				}
 				return 0;
 			}
 
@@ -510,10 +520,9 @@ int TaskJudger::judge() {
 			overallStatus[i] = qMin(overallStatus[i], stateToStatus(thread->getResult(), thread->getScore(),
 			                                                        thread->getFullScore()));
 			message[i][j] = thread->getMessage();
-			delete thread;
 			int nowScore = score[i][j];
 
-			if (j + 1 == task->getTestCase(i)->getInputFiles().size()) {
+			if (j + 1 == inputCount) {
 				for (int k = 0; k < j; k++)
 					nowScore = qMin(nowScore, score[i][k]);
 
@@ -524,12 +533,14 @@ int TaskJudger::judge() {
 
 			emit singleCaseFinished(
 			    contestantName, task->getTestCase(i)->getTimeLimit(), i, j, int(result[i][j]),
-			    (j + 1 == task->getTestCase(i)->getInputFiles().size() ? 1 : -1) * nowScore, timeUsed[i][j],
+			    (j + 1 == inputCount ? 1 : -1) * nowScore, timeUsed[i][j],
 			    memoryUsed[i][j]);
 
 			if (score[i][j] < testCaseScore[i])
 				testCaseScore[i] = score[i][j];
 		}
+		for (auto *thread : threads)
+			delete thread;
 	}
 
 	return 1;
@@ -541,4 +552,7 @@ void TaskJudger::taskSkipped(const std::pair<int, int> &cur) {
 	                        cur.first, cur.second, int(result[cur.first][cur.second]), 0, 0, 0);
 }
 
-void TaskJudger::stop() { isJudging = false; }
+void TaskJudger::stop() {
+	isJudging = false;
+	emit stopJudgingSignal();
+}

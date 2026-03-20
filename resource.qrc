@@ -6,6 +6,7 @@
         <file>makespec/VERSION</file>
         <file>makespec/VERSIONSUFFIX</file>
         <file>assets/lemon-lime.ico</file>
+        <file alias="testlib.h">assets/Testlib-for-Lemons/testlib.h</file>
     </qresource>
     <qresource prefix="/icon">
         <file alias="icon.png">assets/icons/lemon-lime.png</file>

@@ -25,7 +25,9 @@ class Compiler : public QObject {
 	const QString &getCompilerName() const;
 	const QStringList &getSourceExtensions() const;
 	const QString &getCompilerLocation() const;
+	QString getResolvedCompilerLocation() const;
 	const QString &getInterpreterLocation() const;
+	QString getResolvedInterpreterLocation() const;
 	const QStringList &getBytecodeExtensions() const;
 	const QStringList &getConfigurationNames() const;
 	const QStringList &getCompilerArguments() const;

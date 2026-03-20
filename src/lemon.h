@@ -52,6 +52,7 @@ class LemonLime : public QMainWindow {
 	void addTask(const QString &, const QList<std::pair<QString, QString>> &, int, int, int);
 	void addTaskWithScoreScale(const QString &, const QList<std::pair<QString, QString>> &, int, int, int);
 	static bool compareFileName(const std::pair<QString, QString> &, const std::pair<QString, QString> &);
+	void ensureBundledRuntimeFiles() const;
 
   private slots:
 	void summarySelectionChanged();
