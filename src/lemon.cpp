@@ -55,6 +55,7 @@ LemonLime::LemonLime(QWidget *parent) : QMainWindow(parent), ui(new Ui::LemonLim
 	ui->actionChangeContestName->setEnabled(false);
 	dataDirWatcher = nullptr;
 	settings->loadSettings();
+	ensureBundledRuntimeFiles();
 	TaskMenu = new QMenu();
 	signalMapper = new QSignalMapper();
 	ui->summary->setSettings(settings);
@@ -107,6 +108,15 @@ LemonLime::LemonLime(QWidget *parent) : QMainWindow(parent), ui(new Ui::LemonLim
 	autoSaveTimer.start(30s);
 }
 
+void LemonLime::ensureBundledRuntimeFiles() const {
+	const QString testlibPath = Settings::testlibHeaderPath();
+	const QFileInfo testlibInfo(testlibPath);
+	QDir().mkpath(testlibInfo.absolutePath());
+	if (! QFileInfo::exists(testlibPath)) {
+		QFile::copy(":/asset/testlib.h", testlibPath);
+	}
+}
+
 LemonLime::~LemonLime() {
 	delete TaskMenu;
 	delete ui;
@@ -133,16 +143,22 @@ auto LemonLime::getSplashTime() -> int { return settings->getSplashTime(); }
 
 void LemonLime::welcome() {
 	if (settings->getCompilerList().empty()) {
-		auto *wizard = new AddCompilerWizard(this);
+		const QString compilerDir = Settings::compilerPath();
+		const bool hasBundledCompiler =
+		    QDir(compilerDir).exists() &&
+		    ! QDir(compilerDir).entryList(QDir::Files | QDir::Executable | QDir::NoDotAndDotDot).isEmpty();
+		if (! hasBundledCompiler) {
+			auto *wizard = new AddCompilerWizard(this);
 
-		if (wizard->exec() == QDialog::Accepted) {
-			QList<Compiler *> compilerList = wizard->getCompilerList();
+			if (wizard->exec() == QDialog::Accepted) {
+				QList<Compiler *> compilerList = wizard->getCompilerList();
 
-			for (auto &i : compilerList)
-				settings->addCompiler(i);
+				for (auto &i : compilerList)
+					settings->addCompiler(i);
+			}
+
+			delete wizard;
 		}
-
-		delete wizard;
 	}
 
 	auto *dialog = new WelcomeDialog(this);

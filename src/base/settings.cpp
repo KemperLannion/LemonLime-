@@ -14,7 +14,9 @@
 //
 #include <cmath>
 //
+#include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QLocale>
 #include <QSettings>
 
@@ -642,6 +644,52 @@ void Settings::loadSettings() {
 	}
 
 	settings.endArray();
+
+	if (compilerList.isEmpty()) {
+		const auto findBundled = [](const QStringList &candidates) -> QString {
+			for (const auto &candidate : candidates) {
+				const QString bundled = QDir::toNativeSeparators(Settings::compilerPath() + candidate);
+				if (QFileInfo::exists(bundled))
+					return bundled;
+			}
+			return "";
+		};
+
+		const QString gccPath = findBundled({"gcc", "gcc.exe"});
+		if (! gccPath.isEmpty()) {
+			auto *compiler = new Compiler;
+			compiler->setCompilerName("gcc");
+			compiler->setCompilerLocation(gccPath);
+			compiler->setSourceExtensions("c");
+			compiler->addConfiguration("default", "-o %s %s.* -lm", "");
+			addCompiler(compiler);
+		}
+
+		const QString gppPath = findBundled({"g++", "g++.exe"});
+		if (! gppPath.isEmpty()) {
+			auto *compiler = new Compiler;
+			compiler->setCompilerName("g++");
+			compiler->setCompilerLocation(gppPath);
+			compiler->setSourceExtensions("cpp;cc;cxx");
+			compiler->addConfiguration("default", "-o %s %s.* -lm", "");
+			addCompiler(compiler);
+		}
+
+		const QString pythonPath = findBundled({"python3", "python3.exe", "python", "python.exe"});
+		if (! pythonPath.isEmpty()) {
+			auto *compiler = new Compiler;
+			compiler->setCompilerType(Compiler::InterpretiveWithoutByteCode);
+			compiler->setCompilerName("python");
+			compiler->setSourceExtensions("py");
+			compiler->setInterpreterLocation(pythonPath);
+			compiler->setTimeLimitRatio(5.0);
+			compiler->setMemoryLimitRatio(1.0);
+			compiler->setDisableMemoryLimitCheck(true);
+			compiler->setInterpreterAsWatcher(false);
+			compiler->addConfiguration("default", "", "%s.py");
+			addCompiler(compiler);
+		}
+	}
 #ifdef Q_OS_WIN32
 	diffPath = QDir::toNativeSeparators(QDir::currentPath()) + QDir::separator() + "diff.exe";
 #else
@@ -664,5 +712,16 @@ auto Settings::upperBoundForRejudgeTimes() -> int { return 12; }
 auto Settings::dataPath() -> QString { return QString("data") + QDir::separator(); }
 
 auto Settings::sourcePath() -> QString { return QString("source") + QDir::separator(); }
+
+auto Settings::toolsPath() -> QString {
+	return QDir::toNativeSeparators(QCoreApplication::applicationDirPath()) + QDir::separator() + "tools" +
+	       QDir::separator();
+}
+
+auto Settings::compilerPath() -> QString { return toolsPath() + "compilers" + QDir::separator(); }
+
+auto Settings::testlibHeaderPath() -> QString {
+	return toolsPath() + "testlib" + QDir::separator() + "testlib.h";
+}
 
 auto Settings::selfTestPath() -> QString { return QString("selftest") + QDir::separator(); }

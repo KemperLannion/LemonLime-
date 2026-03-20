@@ -10,6 +10,9 @@
 #include "compiler.h"
 //
 #include "base/LemonUtils.hpp"
+#include "base/settings.h"
+#include <QDir>
+#include <QFileInfo>
 
 Compiler::Compiler(QObject *parent) : QObject(parent) {
 	compilerType = Typical;
@@ -27,7 +30,29 @@ auto Compiler::getSourceExtensions() const -> const QStringList & { return sourc
 
 auto Compiler::getCompilerLocation() const -> const QString & { return compilerLocation; }
 
+auto Compiler::getResolvedCompilerLocation() const -> QString {
+	if (compilerLocation.isEmpty())
+		return compilerLocation;
+	if (QFileInfo::exists(compilerLocation))
+		return compilerLocation;
+	QString bundled = Settings::compilerPath() + compilerLocation;
+	if (QFileInfo::exists(bundled))
+		return QDir::toNativeSeparators(bundled);
+	return compilerLocation;
+}
+
 auto Compiler::getInterpreterLocation() const -> const QString & { return interpreterLocation; }
+
+auto Compiler::getResolvedInterpreterLocation() const -> QString {
+	if (interpreterLocation.isEmpty())
+		return interpreterLocation;
+	if (QFileInfo::exists(interpreterLocation))
+		return interpreterLocation;
+	QString bundled = Settings::compilerPath() + interpreterLocation;
+	if (QFileInfo::exists(bundled))
+		return QDir::toNativeSeparators(bundled);
+	return interpreterLocation;
+}
 
 auto Compiler::getBytecodeExtensions() const -> const QStringList & { return bytecodeExtensions; }
 
